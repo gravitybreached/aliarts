@@ -1,12 +1,15 @@
 {
   "name": "AliArts Dev Environment",
-  "build": {
-    "dockerfile": "Dockerfile"
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers-community/features/bun:1": {
+      "version": "latest"
+    }
   },
   "forwardPorts": [3000],
   "portsAttributes": {
     "3000": {
-      "label": "Next.js App",
+      "label": "Next.js Dev Server",
       "onAutoForward": "notify"
     }
   },
@@ -17,11 +20,13 @@
         "esbenp.prettier-vscode",
         "bradlc.vscode-tailwindcss",
         "prisma.prisma",
-        "ms-azuretools.vscode-docker"
+        "ms-vscode.vscode-typescript-next"
       ],
       "settings": {
         "editor.formatOnSave": true,
-        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
         "typescript.tsdk": "node_modules/typescript/lib",
         "tailwindCSS.includeLanguages": {
           "typescript": "javascript",
@@ -30,13 +35,6 @@
       }
     }
   },
-  "postCreateCommand": "bun install",
-  "postStartCommand": "bun run dev",
-  "remoteEnv": {
-    "DATABASE_URL": "${localEnv:DATABASE_URL}",
-    "SCALEWAY_ACCESS_KEY": "${localEnv:SCALEWAY_ACCESS_KEY}",
-    "SCALEWAY_SECRET_KEY": "${localEnv:SCALEWAY_SECRET_KEY}",
-    "NEXTAUTH_SECRET": "${localEnv:NEXTAUTH_SECRET}",
-    "NEXTAUTH_URL": "${localEnv:NEXTAUTH_URL}"
-  }
+  "postCreateCommand": "bash .devcontainer/post-install.sh",
+  "remoteUser": "vscode"
 }
