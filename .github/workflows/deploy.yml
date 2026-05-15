@@ -1,0 +1,41 @@
+name: Deploy AliArts to OCI
+
+on:
+  push:
+    branches: [artwork]
+  workflow_dispatch:
+
+env:
+  OCI_HOST: ${{ secrets.OCI_HOST }}
+  OCI_USER: ${{ secrets.OCI_USER }}
+  OCI_SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
+  APP_DIR: /home/ubuntu/aliarts
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to OCI via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OCI_HOST }}
+          username: ${{ secrets.OCI_USER }}
+          key: ${{ secrets.OCI_SSH_KEY }}
+          script: |
+            cd ${{ secrets.APP_DIR || '/home/ubuntu/aliarts' }}
+
+            # Pull latest code
+            git pull origin artwork
+
+            # Rebuild and restart Docker container
+            docker compose down
+            docker compose up -d --build
+
+            # Clean up old images
+            docker image prune -f
+
+            echo "✅ AliArts deployed successfully!"

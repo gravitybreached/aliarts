@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  aliarts:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aliarts-app
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://aliarts:clUKLBXTxpzW1hb09Kzd3Q@bright-burro-15816.jxf.gcp-asia-southeast1.cockroachlabs.cloud:26257/defaultdb?sslmode=require
+      - SCALEWAY_ACCESS_KEY=SCW724X1XEW4EBEQPBDX
+      - SCALEWAY_SECRET_KEY=45fce482-6cd5-446b-87d2-1118068745af
+      - SCALEWAY_BUCKET=img-vessel
+      - SCALEWAY_REGION=fr-par
+      - SCALEWAY_ENDPOINT=https://s3.fr-par.scw.cloud
+      - SCALEWAY_BASE_PATH=aliarts
+      - SCALEWAY_ADMIN_PATH=aliarts/admin
+      - SCALEWAY_USER_PATH=aliarts/users
+      - NEXTAUTH_URL=https://yourdomain.com
+      - NEXTAUTH_SECRET=CHANGE_THIS_TO_A_STRONG_RANDOM_STRING
+      - NEXT_PUBLIC_APP_URL=https://yourdomain.com
+      - NEXT_PUBLIC_APP_NAME=AliArts
+      - USER_ROACH=aliarts
+      - PASSWORD_ROACH=clUKLBXTxpzW1hb09Kzd3Q
+      - HOST_ROACH=bright-burro-15816.jxf.gcp-asia-southeast1.cockroachlabs.cloud
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/auth/session"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

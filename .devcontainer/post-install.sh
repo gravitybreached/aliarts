@@ -4,50 +4,35 @@ set -e
 
 echo "🔧 Setting up AliArts development environment..."
 
-# ---------------------------------------------------------------------------
-# 1. Ensure bun is on PATH for this script session.
-#    The devcontainer feature installs bun to ~/.bun/bin but the PATH
-#    export only takes effect in interactive login shells — not in the
-#    non-interactive shell that postCreateCommand runs in.
-#    We source it explicitly here so everything below can find `bun`.
-# ---------------------------------------------------------------------------
-export PATH="$HOME/.bun/bin:$PATH"
-
-# If still missing (feature failed), install bun manually
+# Ensure bun is available — install it if the devcontainer feature didn't work
 if ! command -v bun &> /dev/null; then
-    echo "📦 Bun not found, installing manually..."
+    echo "📦 Bun not found in PATH, installing manually..."
     curl -fsSL https://bun.sh/install | bash
     export PATH="$HOME/.bun/bin:$PATH"
+
+    # Also add to shell profile for future sessions
+    echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.bashrc
+    echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.zshrc 2>/dev/null || true
+else
+    echo "✅ Bun found: $(bun --version)"
 fi
 
-echo "✅ Bun found: $(bun --version)"
-
-# ---------------------------------------------------------------------------
-# 2. Persist PATH for every future interactive terminal session.
-#    Write to both .bashrc (bash) and .zshrc (zsh, used by Codespaces default).
-#    Guard against duplicate entries.
-# ---------------------------------------------------------------------------
-BUN_PATH_LINE='export PATH="$HOME/.bun/bin:$PATH"'
-
-for PROFILE in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
-    if [ -f "$PROFILE" ] || [ "$PROFILE" = "$HOME/.profile" ]; then
-        if ! grep -qF '.bun/bin' "$PROFILE" 2>/dev/null; then
-            echo "$BUN_PATH_LINE" >> "$PROFILE"
-        fi
-    fi
-done
-
-# ---------------------------------------------------------------------------
-# 3. Install dependencies
-# ---------------------------------------------------------------------------
+# Install dependencies
 echo "📦 Installing dependencies..."
-bun install
+if command -v bun &> /dev/null; then
+    bun install
+else
+    echo "⚠️ Bun still not available, falling back to npm..."
+    npm install
+fi
 
-# ---------------------------------------------------------------------------
-# 4. Generate Prisma Client
-# ---------------------------------------------------------------------------
+# Generate Prisma Client
 echo "🗄️ Generating Prisma Client..."
-bun run db:generate
+if command -v bun &> /dev/null; then
+    bun run db:generate
+else
+    npx prisma generate
+fi
 
 echo ""
 echo "✅ Setup complete!"

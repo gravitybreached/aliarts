@@ -2,15 +2,9 @@
   "name": "AliArts Dev Environment",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "features": {
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "lts"
-    },
-    "ghcr.io/shyim/devcontainers-features/bun:0": {
+    "ghcr.io/devcontainers-community/features/bun:1": {
       "version": "latest"
     }
-  },
-  "remoteEnv": {
-    "PATH": "${containerEnv:PATH}:/home/vscode/.bun/bin"
   },
   "forwardPorts": [3000],
   "portsAttributes": {
