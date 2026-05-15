@@ -1,0 +1,617 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "cockroachdb"
+  url      = env("DATABASE_URL")
+}
+
+// ─── USERS & AUTH ───────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  username      String?   @unique
+  password      String?
+  image         String?
+  bio           String?
+  role          Role      @default(USER)
+  emailVerified DateTime?
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  courses       Course[]
+  enrollments   Enrollment[]
+  artworks      Artwork[]
+  orders        Order[]
+  comments      Comment[]
+  likes         Like[]
+  posts         Post[]
+  notifications Notification[]
+  favorites     Favorite[]
+  reports       Report[]       @relation("Reporter")
+  auditLogs     AuditLog[]
+  uploads       MediaAsset[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+// ─── COURSES ────────────────────────────────────────────
+
+model Course {
+  id          String       @id @default(cuid())
+  title       String
+  slug        String       @unique
+  description String?
+  content     String?      
+  price       Float        @default(0)
+  salePrice   Float?
+  thumbnail   String?
+  level       CourseLevel  @default(BEGINNER)
+  status      PublishStatus @default(DRAFT)
+  featured    Boolean      @default(false)
+  publishedAt DateTime?
+
+  // Relations
+  authorId    String
+  author      User         @relation(fields: [authorId], references: [id])
+  lessons     Lesson[]
+  enrollments Enrollment[]
+  categories  CourseCategory[]
+  tags        CourseTag[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("courses")
+}
+
+model Lesson {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?
+  content     String?   
+  videoUrl    String?
+  videoType   VideoType @default(YOUTUBE)
+  duration    Int       @default(0)
+  order       Int       @default(0)
+  isFree      Boolean   @default(false)
+  status      PublishStatus @default(DRAFT)
+
+  courseId    String
+  course     Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@map("lessons")
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum VideoType {
+  YOUTUBE
+  FACEBOOK
+  VIMEO
+  CUSTOM
+}
+
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// ─── ARTWORKS ───────────────────────────────────────────
+
+model Artwork {
+  id             String    @id @default(cuid())
+  title          String
+  slug           String    @unique
+  description    String?   
+  price          Float     @default(0)
+  salePrice      Float?
+  image          String?
+  images         String?   
+  category       String?
+  medium         String?
+  dimensions     String?
+  year           Int?
+  status         PublishStatus @default(DRAFT)
+  featured       Boolean   @default(false)
+  isForSale      Boolean   @default(true)
+  isDownloadable Boolean   @default(false)
+  downloadFile   String?
+  publishedAt    DateTime?
+
+  // Relations
+  artistId       String
+  artist         User      @relation(fields: [artistId], references: [id])
+  favorites      Favorite[]
+  tags           ArtworkTag[]
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("artworks")
+}
+
+// ─── ORDERS & ENROLLMENTS ──────────────────────────────
+
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique
+  status        OrderStatus @default(PENDING)
+  total         Float
+  currency      String      @default("USD")
+  paymentMethod String?
+  paymentId     String?
+
+  // Relations
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  items         OrderItem[]
+
+  couponId      String?
+  coupon        Coupon?     @relation(fields: [couponId], references: [id])
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String      @id @default(cuid())
+  itemType  OrderItemType
+  itemId    String
+  title     String
+  price     Float
+  quantity  Int         @default(1)
+
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum OrderItemType {
+  COURSE
+  ARTWORK
+}
+
+model Enrollment {
+  id         String   @id @default(cuid())
+  progress   Float    @default(0)
+  completed  Boolean  @default(false)
+
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id])
+
+  enrolledAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+// ─── COMMUNITY ──────────────────────────────────────────
+
+model Post {
+  id          String       @id @default(cuid())
+  title       String
+  content     String?      
+  image       String?
+  type        PostType     @default(DISCUSSION)
+  status      PostStatus   @default(PENDING)
+  pinned      Boolean      @default(false)
+
+  // Relations
+  authorId    String
+  author      User         @relation(fields: [authorId], references: [id])
+  comments    Comment[]
+  likes       Like[]
+  tags        PostTag[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("posts")
+}
+
+enum PostType {
+  DISCUSSION
+  CHALLENGE
+  SHOWCASE
+  ANNOUNCEMENT
+  FEEDBACK
+}
+
+enum PostStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  HIDDEN
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  content   String    
+  hidden    Boolean   @default(false)
+
+  // Relations
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id])
+  postId    String?
+  post      Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  likes     Like[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("comments")
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  type      LikeType @default(LIKE)
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  postId    String?
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId String?
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@unique([userId, commentId])
+  @@map("likes")
+}
+
+enum LikeType {
+  LIKE
+  LOVE
+  INSPIRE
+  AMAZING
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  artworkId String
+  artwork   Artwork  @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, artworkId])
+  @@map("favorites")
+}
+
+// ─── CATEGORIES & TAGS ─────────────────────────────────
+
+model Category {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  slug        String       @unique
+  description String?
+  icon        String?
+  type        CategoryType @default(COURSE)
+
+  courses     CourseCategory[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("categories")
+}
+
+enum CategoryType {
+  COURSE
+  ARTWORK
+  POST
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+
+  courses   CourseTag[]
+  artworks  ArtworkTag[]
+  posts     PostTag[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tags")
+}
+
+// Join tables for many-to-many
+model CourseCategory {
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, categoryId])
+  @@map("course_categories")
+}
+
+model CourseTag {
+  courseId String
+  course   Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tagId    String
+  tag      Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, tagId])
+  @@map("course_tags")
+}
+
+model ArtworkTag {
+  artworkId String
+  artwork   Artwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  tagId     String
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([artworkId, tagId])
+  @@map("artwork_tags")
+}
+
+model PostTag {
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tagId  String
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, tagId])
+  @@map("post_tags")
+}
+
+// ─── MEDIA ASSETS ───────────────────────────────────────
+
+model MediaAsset {
+  id          String   @id @default(cuid())
+  url         String
+  key         String
+  name        String
+  type        String
+  size        Int
+  mimeType    String
+  thumbnail   String?
+  alt         String?
+  folder      String?
+
+  // Relations
+  uploaderId  String
+  uploader    User     @relation(fields: [uploaderId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("media_assets")
+}
+
+// ─── NOTIFICATIONS ──────────────────────────────────────
+
+model Notification {
+  id        String            @id @default(cuid())
+  title     String
+  message   String
+  type      NotificationType  @default(INFO)
+  read      Boolean           @default(false)
+  link      String?
+
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime          @default(now())
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  ENROLLMENT
+  ORDER
+  COMMENT
+  LIKE
+}
+
+// ─── COUPONS ────────────────────────────────────────────
+
+model Coupon {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  type        CouponType   @default(PERCENTAGE)
+  value       Float
+  minAmount   Float?
+  maxUses     Int?
+  usedCount   Int          @default(0)
+  startsAt    DateTime?
+  expiresAt   DateTime?
+  active      Boolean      @default(true)
+
+  orders      Order[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("coupons")
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+}
+
+// ─── BANNERS ────────────────────────────────────────────
+
+model Banner {
+  id          String    @id @default(cuid())
+  title       String
+  subtitle    String?
+  image       String
+  link        String?
+  linkText    String?
+  position    Int       @default(0)
+  active      Boolean   @default(true)
+  startsAt    DateTime?
+  expiresAt   DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("banners")
+}
+
+// ─── ANNOUNCEMENTS ──────────────────────────────────────
+
+model Announcement {
+  id          String            @id @default(cuid())
+  title       String
+  content     String            
+  type        NotificationType  @default(INFO)
+  pinned      Boolean           @default(false)
+  active      Boolean           @default(true)
+  startsAt    DateTime?
+  expiresAt   DateTime?
+
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@map("announcements")
+}
+
+// ─── REPORTS / MODERATION ──────────────────────────────
+
+model Report {
+  id          String       @id @default(cuid())
+  reason      String
+  description String?
+  status      ReportStatus @default(PENDING)
+  targetType  String
+  targetId    String
+
+  reporterId  String
+  reporter    User         @relation("Reporter", fields: [reporterId], references: [id])
+
+  resolvedAt  DateTime?
+  resolvedBy  String?
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("reports")
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+// ─── SETTINGS ───────────────────────────────────────────
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String 
+  group String @default("general")
+
+  @@map("settings")
+}
+
+// ─── AUDIT LOGS ─────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String
+  entityId  String?
+  details   String?  
+  ipAddress String?
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}

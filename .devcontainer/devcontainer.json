@@ -1,0 +1,45 @@
+{
+  "name": "AliArts Dev Environment",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "features": {
+    "ghcr.io/shynd/devcontainer-features/bun:1": {
+      "version": "latest"
+    }
+  },
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Next.js App",
+      "onAutoForward": "notify"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "prisma.prisma",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "tailwindCSS.includeLanguages": {
+          "typescript": "javascript",
+          "typescriptreact": "javascript"
+        }
+      }
+    }
+  },
+  "postCreateCommand": "bun install",
+  "postStartCommand": "bun run dev",
+  "remoteEnv": {
+    "DATABASE_URL": "${localEnv:DATABASE_URL}",
+    "SCALEWAY_ACCESS_KEY": "${localEnv:SCALEWAY_ACCESS_KEY}",
+    "SCALEWAY_SECRET_KEY": "${localEnv:SCALEWAY_SECRET_KEY}",
+    "NEXTAUTH_SECRET": "${localEnv:NEXTAUTH_SECRET}",
+    "NEXTAUTH_URL": "${localEnv:NEXTAUTH_URL}"
+  }
+}
