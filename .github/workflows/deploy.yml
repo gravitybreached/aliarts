@@ -3,22 +3,14 @@ name: Deploy AliArts to OCI
 on:
   push:
     branches: [artwork]
-  workflow_dispatch:
-
-env:
-  OCI_HOST: ${{ secrets.OCI_HOST }}
-  OCI_USER: ${{ secrets.OCI_USER }}
-  OCI_SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
-  APP_DIR: /home/ubuntu/aliarts
+  workflow_dispatch: # Allow manual trigger from GitHub UI
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Deploy to OCI via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -26,16 +18,46 @@ jobs:
           username: ${{ secrets.OCI_USER }}
           key: ${{ secrets.OCI_SSH_KEY }}
           script: |
-            cd ${{ secrets.APP_DIR || '/home/ubuntu/aliarts' }}
+            set -e
 
-            # Pull latest code
-            git pull origin artwork
+            APP_DIR="${{ secrets.APP_DIR || '/home/ubuntu/aliarts' }}"
 
-            # Rebuild and restart Docker container
-            docker compose down
+            echo "=== AliArts Deployment Started ==="
+            echo "App directory: $APP_DIR"
+            echo "Time: $(date)"
+
+            # ─── First-time setup: clone repo if directory doesn't exist ───
+            if [ ! -d "$APP_DIR" ]; then
+              echo "First deployment — cloning repository..."
+              git clone -b artwork https://github.com/gravitybreached/aliarts.git "$APP_DIR"
+              cd "$APP_DIR"
+            else
+              echo "Updating existing deployment..."
+              cd "$APP_DIR"
+              git fetch origin artwork
+              git reset --hard origin/artwork
+            fi
+
+            # ─── Build and restart Docker container ───
+            echo "Building Docker image..."
+            docker compose down || true
             docker compose up -d --build
 
-            # Clean up old images
+            # ─── Wait for health check ───
+            echo "Waiting for container to start..."
+            sleep 10
+
+            # Check if container is running
+            if docker ps | grep -q aliarts-app; then
+              echo "Container is running!"
+            else
+              echo "ERROR: Container failed to start!"
+              docker compose logs --tail=50
+              exit 1
+            fi
+
+            # ─── Cleanup old Docker images ───
             docker image prune -f
 
-            echo "✅ AliArts deployed successfully!"
+            echo "=== AliArts Deployment Complete ==="
+            echo "App should be live at http://localhost:3001"

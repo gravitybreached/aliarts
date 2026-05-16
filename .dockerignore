@@ -1,9 +1,36 @@
+# ─── AliArts .dockerignore ───
+# Keeps Docker context small and build fast
+
+# Dependencies (reinstalled in Docker)
 node_modules
+
+# Build output (rebuilt in Docker)
 .next
+
+# Git
 .git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Docker files themselves
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+README.md
+LICENSE
+
+# Development / local files
 db
 dev.log
 server.log
+*.log
+
+# Z.AI / Agent files
 .zscripts
 .z-ai-config
 skills
@@ -12,4 +39,15 @@ download
 .claude
 upload
 agent-ctx
-bun.lock
+
+# Caddy (not used in production with Nginx)
+Caddyfile
+
+# Devcontainer
+.devcontainer
+
+# Misc
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
